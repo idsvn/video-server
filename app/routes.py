@@ -49,7 +49,7 @@ def process_video_editor(video_id):
     if request.method == 'PUT':
         return update_video(video_id, request.get_json())
     if request.method == 'POST':
-        return update_video(video_id, request.form)
+        return post_video(video_id, request.get_json())
     if request.method == 'DELETE':
         return delete_video(video_id)
 
@@ -93,6 +93,45 @@ def update_video(video_id, updates):
     doc = app.fs.edit(None, video_id, edited_video_stream, client_name, metadata)
 
     return Response(json_util.dumps(doc), status=200, mimetype='application/json')
+
+
+def post_video(video_id, updates):
+    user_agent = request.headers.environ.get('HTTP_USER_AGENT')
+    client_name = user_agent.split('/')[0]
+    if client_name.lower() not in app.config.get('AGENT_ALLOW'):
+        return bad_request("client is not allow to edit")
+
+    if not updates:
+        return bad_request("invalid request")
+
+    actions = updates.keys()
+    supported_action = ('cut', 'crop', 'rotate')
+    if any(action for action in actions if action not in supported_action):
+        return bad_request("action is not supported")
+
+    video_file = get_collection('video').find_one({"_id": ObjectId(video_id)})
+    ext = os.path.splitext(video_file['filename'])[-1]
+    new_file_name = create_file_name(ext)
+
+
+    video_stream = app.fs.get(None, video_id)
+
+    video_editor = get_video_editor_tool('ffmpeg')
+    edited_video_stream, metadata = video_editor.edit_video(
+        None,
+        video_stream,
+        video_file['filename'],
+        video_file['metadata'],
+        None,
+        updates.get('cut'),
+        updates.get('crop'),
+        updates.get('rotate'),
+    )
+
+    doc = app.fs.add(None, video_id, edited_video_stream, new_file_name, client_name, metadata)
+
+    return Response(json_util.dumps(doc), status=200, mimetype='application/json')
+
 
 
 def create_video(files, agent):

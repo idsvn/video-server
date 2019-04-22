@@ -97,6 +97,29 @@ class FileSystemMediaStorage(MediaStorageFS):
             f.write(stream.read())
 
         return updated_video
+    
+    def add(self, _id, stream, filename, client_info=None, metadata=None):
+        _id = format_id(_id)
+        logger.debug('Getting media file with id= %s' % _id)
+        video_collection = get_collection('video')
+        parent = video_collection.find_one({"_id": _id})
+        doc = {
+            'filename': filename,
+            'metadata': metadata,
+            'client_info': client_info,
+            'version': parent.get('version') + 1,
+            'processing': False,
+            "parent": parent,
+            'thumbnails': parent.get('thumnails'),
+        }
+        video_collection.insert_one(doc)
+
+        path_file = os.path.join(PATH_FS, filename)
+
+        with open(path_file, 'wr') as f:
+            f.write(stream.read())
+
+        return doc
 
     def delete(self, _id):
         logger.debug('Getting media file with id= %s' % _id)
