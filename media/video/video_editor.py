@@ -58,7 +58,7 @@ class FfmpegVideoEditor(VideoEditor):
         finally:
             os.remove(path_output)
 
-    def edit_video(self, path_video, path_output, para=[]):
+    def _edit_video(self, path_video, path_output, para=[]):
         """
              Use ffmpeg to cutting video via start time and end time, and get the total frames of video.
         :param path_video:

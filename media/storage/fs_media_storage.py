@@ -1,7 +1,9 @@
 import logging
+import tempfile
 import bson
 import os.path
 from media import get_collection
+from pymongo import ReturnDocument
 
 logger = logging.getLogger(__name__)
 PATH_FS = os.path.dirname(__file__) + '/fs'
@@ -54,8 +56,28 @@ class FileSystemMediaStorage(MediaStorageFS):
         except Exception as ex:
             logger.info('File filename=%s error ex:' % (filename, ex))
 
-    def edit(self):
-        pass
+    def edit(self, _id, stream, client_info=None, metadata=None, **kwargs):
+        _id = format_id(_id)
+        logger.debug('Getting media file with id= %s' % _id)
+        video_collection = get_collection('video')
+        updated_video = video_collection.find_one_and_update(
+            {'_id': _id},
+            {'$set': {
+                'metadata': metadata,
+                'processing': True,
+                'client_info': client_info,
+            }},
+            return_document=ReturnDocument.AFTER
+        )
+
+        path_file = os.path.join(PATH_FS, updated_video.filename)
+        if os.path.exists(path_file):
+            os.remove(path_file)
+
+        with open(path_file, 'wr') as f:
+            f.write(stream.read())
+
+        return updated_video
 
     def delete(self, _id):
         logger.debug('Getting media file with id= %s' % _id)
