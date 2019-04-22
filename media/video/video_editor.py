@@ -7,13 +7,24 @@ import tempfile
 
 class VideoEditor(object):
 
-    def get_meta(self):
+    def get_meta(self, filestream):
         pass
 
-    def create_video(self):
-        pass
-
-    def edit_video(self):
+    def edit_video(self, stream_file, filename, metadata, media_id, video_cut=None, video_crop=None, video_rotate=None,
+                   video_quality=None):
+        """
+        This function user for edit a stream file video
+        support: cut, crop, rotate, quality video
+        :param stream_file:
+        :param filename:
+        :param metadata:
+        :param media_id:
+        :param video_cut:
+        :param video_crop:
+        :param video_rotate:
+        :param video_quality:
+        :return:
+        """
         pass
 
 
@@ -22,32 +33,89 @@ def create_file_name(ext):
 
 
 class FfmpegVideoEditor(VideoEditor):
-    def get_meta(self, file):
-        ext = file.filename.split('.')[1]
-        file_name = create_file_name(ext)
-        metadata = {}
-        try:
-            file_temp_path = self.create_temp_file(file.stream, file_name)
-            metadata = self._get_meta(file_temp_path)
-        finally:
-            if file_temp_path:
-                os.remove(file_temp_path)
-        return metadata
 
-    def get_meta_of_stream(self, filestream):
+    def get_meta(self, filestream):
+        """
+        Use ffmpeg tool to get meta data video stream
+        return metadata information
+        :param filestream:
+        :return:
+        """
         file_name = create_file_name('tmp')
         metadata = {}
         try:
-            file_temp_path = self.create_temp_file(filestream, file_name)
+            file_temp_path = self._create_temp_file(filestream, file_name)
             metadata = self._get_meta(file_temp_path)
         finally:
             if file_temp_path:
                 os.remove(file_temp_path)
         return metadata
 
-    def video_edit(self, stream_file, filename, metadata, media_id, video_cut=None, video_crop=None, video_rotate=None,
+    def edit_video(self, stream_file, filename, metadata, media_id, video_cut=None, video_crop=None, video_rotate=None,
                    video_quality=None):
-        pass
+        """
+        Use ffmpeg tool to g
+        :param stream_file:
+        :param filename:
+        :param metadata:
+        :param media_id:
+        :param video_cut:
+        :param video_crop:
+        :param video_rotate:
+        :param video_quality:
+        :return:
+        """
+        try:
+            path_video = self._create_temp_file(stream_file, filename)
+            duration = float(metadata['duration'])
+            if (not video_cut or (
+                    video_cut['start'] == 0 and int(video_cut['end']) == int(
+                duration))) and not video_crop and (
+                    not video_rotate or int(video_rotate['degree']) % 360 == 0) and not video_quality:
+                return {}, media_id
+            mime_type = metadata['mime_type']
+            path_output = path_video + "_edit." + str.split(mime_type, "/")[1]
+
+            # use copy data
+            if video_cut:
+                path_video = self._edit_video(path_video, path_output,
+                                              ["-ss", str(video_cut["start"]), "-t", str(video_cut["end"]),
+                                               "-c",
+                                               "copy"])
+
+            # use filter data
+            str_filter = ""
+            if video_crop:
+                str_filter += "crop=%s:%s:%s:%s" % (
+                    video_crop["width"], video_crop["height"], video_crop["x"], video_crop["y"])
+            if video_rotate:
+                delta90 = round((int(video_rotate['degree'] % 360) / 90))
+                if delta90 != 0:
+                    rotate_string = 1
+                    if delta90 == 1:
+                        rotate_string = "transpose=1"
+                    if delta90 == 2:
+                        rotate_string = "transpose=2,transpose=2"
+                    if delta90 == 3:
+                        rotate_string = "transpose=2"
+                    str_filter += "," if str_filter != "" else ''
+                    str_filter += rotate_string
+            if video_quality:
+                str_filter += "," if str_filter != "" else ''
+                str_filter += "scale=%s:-2" % video_quality['quality']
+            if str_filter != '':
+                path_video = self._edit_video(path_video, path_output,
+                                              ["-filter:v", str_filter, "-max_muxing_queue_size", "1024", "-threads",
+                                               "5",
+                                               "-preset", "ultrafast", "-strict",
+                                               "-2", "-c:a", "copy"])
+            content = BytesIO(open(path_video, "rb+").read())
+            metadata_edit_file = self._get_meta(path_video)
+
+        finally:
+            if path_video:
+                os.remove(path_video)
+        return content, metadata_edit_file
 
     def _capture_thumnail(self, path_video, path_output, time_capture=0):
         """
@@ -105,7 +173,7 @@ class FfmpegVideoEditor(VideoEditor):
         metadata['mime_type'] = mime_type
         return metadata
 
-    def create_temp_file(self, file_stream, file_name):
+    def _create_temp_file(self, file_stream, file_name):
         """
             Get stream file from resource and save it to /tmp directory for using (cutting and capture)
         :param media_id:
