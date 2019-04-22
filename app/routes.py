@@ -110,7 +110,7 @@ def post_video(video_id, updates):
         return bad_request("action is not supported")
 
     video_file = get_collection('video').find_one({"_id": ObjectId(video_id)})
-    ext = os.path.splitext(video_file['filename'])[-1]
+    ext = os.path.splitext(video_file['filename'])[-1][1:]
     new_file_name = create_file_name(ext)
 
 

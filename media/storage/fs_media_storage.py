@@ -31,7 +31,7 @@ class FileSystemMediaStorage(MediaStorageFS):
         _id = format_id(_id)
         try:
             file_name = get_collection('video').find_one({"_id": _id}).get('filename')
-            media_file = (open("%s/%s" % (PATH_FS, file_name), 'r+')).read()
+            media_file = (open("%s/%s" % (PATH_FS, file_name), 'rb')).read()
         except Exception:
             media_file = None
         return media_file
@@ -93,8 +93,8 @@ class FileSystemMediaStorage(MediaStorageFS):
         if os.path.exists(path_file):
             os.remove(path_file)
 
-        with open(path_file, 'wr') as f:
-            f.write(stream.read())
+        with open(path_file, 'wb') as f:
+            f.write(stream)
 
         return updated_video
     
@@ -116,8 +116,8 @@ class FileSystemMediaStorage(MediaStorageFS):
 
         path_file = os.path.join(PATH_FS, filename)
 
-        with open(path_file, 'wr') as f:
-            f.write(stream.read())
+        with open(path_file, 'wb') as f:
+            f.write(stream)
 
         return doc
 
