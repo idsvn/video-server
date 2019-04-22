@@ -61,6 +61,7 @@ CELERY_MEDIA_BROKER_URL = BROKER_MEDIA_URL
 
 #: allow agent
 AGENT_ALLOW = env('AGENT_ALLOW', ['superdesk', 'postmanruntime'])
+
 #: Codec support
 CODEC_SUPPORT = env('CODEC_SUPPORT', ['vp8', 'vp9', 'h264', 'aac', 'flac', 'ogg'])
 
