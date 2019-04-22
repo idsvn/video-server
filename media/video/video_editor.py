@@ -54,7 +54,7 @@ class FfmpegVideoEditor(VideoEditor):
         finally:
             os.remove(path_output)
 
-    def _edit_video(self, path_video, path_output, para=[]):
+    def edit_video(self, path_video, path_output, para=[]):
         """
              Use ffmpeg to cutting video via start time and end time, and get the total frames of video.
         :param path_video:
@@ -64,10 +64,13 @@ class FfmpegVideoEditor(VideoEditor):
         """
         try:
             # cut video
-            cmd.run(["ffmpeg", "-i", path_video, *para, path_output])
+            para = [str(p) for p in para]  # subprocess param must not be int
+
+            cmd.run(["ffmpeg", "-i", path_video, *para, path_output, '-y'])
 
             # replace tmp origin
             cmd.run(["cp", "-r", path_output, path_video])
+
             return path_video
         finally:
             os.remove(path_output)

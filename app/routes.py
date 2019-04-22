@@ -1,10 +1,13 @@
+import os
+
 from bson import ObjectId
-from flask import request, Response, Blueprint
+from flask import request, Response, Blueprint, jsonify
 from media import get_collection, validate_json
 from bson import json_util
 from .errors import bad_request
 from media.video.video_editor import get_video_editor_tool
 from flask import current_app as app
+from pymongo import ReturnDocument
 
 bp = Blueprint('projects', __name__)
 
@@ -38,9 +41,30 @@ def delete_video(video_id):
 
 def update_video(video_id, updates):
     video = get_collection('video')
-    updates = {"$set": {"chunkSize": 0}}
-    update = video.update_one({'_id': ObjectId(video_id)}, updates)
-    return 'update successfully'
+    updated_video = video.find_one_and_update(
+        {'_id': ObjectId(video_id)},
+        {'$set': {'processing': True}},
+        return_document=ReturnDocument.AFTER
+    )
+    req = request.get_json()
+    if not req:
+        return bad_request("invalid request")
+
+    cut_request = req.get('cut')
+    if not cut_request:
+        return bad_request("action is not supported")
+
+    video_editor = get_video_editor_tool('ffmpeg')
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    fs_path = os.path.join(current_path, '..', 'media', 'video', 'fs')
+
+    video_editor.edit_video(
+        os.path.join(fs_path, 'sample.mp4'),
+        os.path.join(fs_path, 'output.mp4'),
+        ['-ss', cut_request['start'], '-t', cut_request['end']]
+    )
+
+    return Response(json_util.dumps(updated_video), status=200, mimetype='application/json')
 
 
 def create_video(files, agent):
