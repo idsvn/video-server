@@ -69,14 +69,28 @@ def update_video(video_id, updates):
     if not updates:
         return bad_request("invalid request")
 
-    cut_request = updates.get('cut')
-    if not cut_request:
+    actions = updates.keys()
+    supported_action = ('cut', 'crop', 'rotate')
+    if any(action for action in actions if action not in supported_action):
         return bad_request("action is not supported")
 
-    video_editor = get_video_editor_tool('ffmpeg')
-    video_stream, metadata = video_editor.edit(video_id)
+    video_file = get_collection('video').find_one({"_id": ObjectId(video_id)})
 
-    doc = app.fs.edit(None, video_id, video_stream, user_agent, metadata)
+    video_stream = app.fs.get(None, video_id)
+
+    video_editor = get_video_editor_tool('ffmpeg')
+    edited_video_stream, metadata = video_editor.edit_video(
+        None,
+        video_stream,
+        video_file['filename'],
+        video_file['metadata'],
+        None,
+        updates.get('cut'),
+        updates.get('crop'),
+        updates.get('rotate'),
+    )
+
+    doc = app.fs.edit(None, video_id, edited_video_stream, client_name, metadata)
 
     return Response(json_util.dumps(doc), status=200, mimetype='application/json')
 

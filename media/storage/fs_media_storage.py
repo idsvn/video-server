@@ -30,7 +30,7 @@ class FileSystemMediaStorage(MediaStorageFS):
         logger.debug('Getting media file with id= %s' % _id)
         _id = format_id(_id)
         try:
-            file_name = get_collection('video').find_one({"_id": _id}).get('file_name')
+            file_name = get_collection('video').find_one({"_id": _id}).get('filename')
             media_file = (open("%s/%s" % (PATH_FS, file_name), 'r+')).read()
         except Exception:
             media_file = None
@@ -75,7 +75,7 @@ class FileSystemMediaStorage(MediaStorageFS):
         except Exception as ex:
             logger.info('File filename=%s error ex:' % (filename, ex))
 
-    def edit(self, _id, stream, client_info=None, metadata=None, **kwargs):
+    def edit(self, _id, stream, client_info=None, metadata=None):
         _id = format_id(_id)
         logger.debug('Getting media file with id= %s' % _id)
         video_collection = get_collection('video')
