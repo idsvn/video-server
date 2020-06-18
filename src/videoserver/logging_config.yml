@@ -14,9 +14,15 @@ handlers:
   console:
     class: logging.StreamHandler
     stream  : ext://sys.stdout
+  graylog:
+    class: graypy.GELFUDPHandler
+    host: localhost
+    port: 12202
 loggers:
   worker:
-    handlers: [console]
+    handlers: [graylog]
     level: WARN
+  videoserver:
+    handlers: [graylog]
   root:
-    handlers: [console]
+    handlers: [graylog]
